@@ -7,19 +7,35 @@ import axios from "axios";
 const ChatInfo = (props) => {
   const { user, setChats, selectedChat, setselectedChat } = ChatState();
   const [fetchagain, setfetchagain] = useState(false);
-  const [groupChatName, setgroupChatName] = useState();
+  const [groupChatName, setgroupChatName] = useState("");
   const [selectedUsers, setselectedUsers] = useState([]);
   const [search, setsearch] = useState("");
   const [searchResults, setsearchResults] = useState([]);
   const [SearchQuery, setSearchQuery] = useState("");
-  
+
   const [loading, setloading] = useState(false);
   const [Renameloading, setRenameloading] = useState(false);
 
+  const handleRename = async (e) => {
+    e.preventDefault(); // Prevent form submission
 
-  const handleRename = async () => {
+    if (!groupChatName.trim()) {
+      toast.warn("Please enter a group name", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
+      return;
+    }
 
-    if (!groupChatName) return;
+    if (!user?.token) {
+      toast.error("Authentication token not found", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
+      return;
+    }
 
     const { token } = user;
 
@@ -34,15 +50,24 @@ const ChatInfo = (props) => {
         `http://localhost:5000/api/chat/rename`,
         {
           chatId: selectedChat._id,
-          chatName: groupChatName,
+          chatName: groupChatName.trim(),
         },
         config
       );
 
       setselectedChat(data);
       setfetchagain((prev) => !prev);
+      toast.success("Group name updated successfully", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
     } catch (error) {
-      toast.error(error.message, {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to rename group";
+      toast.error(errorMessage, {
         position: "bottom-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -57,9 +82,23 @@ const ChatInfo = (props) => {
       setgroupChatName("");
     }
   };
+
   const handleSearch = async (query) => {
-    setsearch(query);
-    if (!query) {
+    const trimmedQuery = query.trim();
+    setsearch(trimmedQuery);
+
+    if (!trimmedQuery) {
+      setsearchResults([]);
+      setloading(false);
+      return;
+    }
+
+    if (!user?.token) {
+      toast.error("Authentication token not found", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
       return;
     }
 
@@ -73,14 +112,19 @@ const ChatInfo = (props) => {
         },
       };
       const { data } = await axios.get(
-        `http://localhost:5000/api/user?search=${search}`,
+        `http://localhost:5000/api/user?search=${encodeURIComponent(
+          trimmedQuery
+        )}`,
         config
       );
       console.log(data);
-      setsearchResults(data);
-      setloading(false);
+      setsearchResults(data || []);
     } catch (error) {
-      toast.error(error.message, {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to search users";
+      toast.error(errorMessage, {
         position: "bottom-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -90,10 +134,22 @@ const ChatInfo = (props) => {
         progress: undefined,
         theme: "dark",
       });
+      setsearchResults([]);
+    } finally {
+      setloading(false);
     }
   };
+
   const fetchChats = async () => {
-    // check its working after deployed
+    if (!user?.token) {
+      toast.error("Authentication token not found", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
+      return;
+    }
+
     const { token } = user;
     try {
       const config = {
@@ -107,9 +163,13 @@ const ChatInfo = (props) => {
         config
       );
 
-      setChats(data);
+      setChats(data || []);
     } catch (error) {
-      toast.error(error.message, {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to fetch chats";
+      toast.error(errorMessage, {
         position: "bottom-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -122,75 +182,29 @@ const ChatInfo = (props) => {
     }
   };
 
-   
-
-  const handleRemove = async(usr) => {
-  const { token } = user;
-
- 
-
-  if (selectedChat.groupAdmin._id !== user._id && usr._id !== user._id) {
-    toast.warn("You are not Admin", {
-      position: "bottom-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: false,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-      theme: "dark",
-    });
-    return;
-  }
-  try {
-    const config = {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-
-    const { data } = await axios.put(
-      "http://localhost:5000/api/chat/groupremove",
-      {
-        chatId: selectedChat._id,
-        userId: usr._id,
-      },
-      config
-    );
-
-    (usr._id === user._id) ? setselectedChat(): setselectedChat(data);
-    setfetchagain((prev) => !prev);
-  } catch (error) {
-    toast.error(error.message, {
-      position: "bottom-right",  
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: false,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-      theme: "dark",
-    });
-  }
-  };
-  const handleAdd = async(usr) => {
-        const { token } = user;
-
-    if(selectedChat.users.find((u)=> u._id === usr._id)){
-      toast.info("User already added", {
+  const handleRemove = async (usr) => {
+    if (!user?.token) {
+      toast.error("Authentication token not found", {
         position: "bottom-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: false,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+        autoClose: 3000,
         theme: "dark",
       });
-      return
+      return;
     }
 
-    if(selectedChat.groupAdmin._id !== user._id){
+    if (!selectedChat?.groupAdmin?._id || !usr?._id) {
+      toast.error("Invalid chat or user data", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
+      return;
+    }
+
+    const { token } = user;
+
+    // Check permissions
+    if (selectedChat.groupAdmin._id !== user._id && usr._id !== user._id) {
       toast.warn("You are not Admin", {
         position: "bottom-right",
         autoClose: 5000,
@@ -212,17 +226,129 @@ const ChatInfo = (props) => {
       };
 
       const { data } = await axios.put(
-        "http://localhost:5000/api/chat/groupadd",{
+        "http://localhost:5000/api/chat/groupremove",
+        {
           chatId: selectedChat._id,
-          userId: usr._id
+          userId: usr._id,
+        },
+        config
+      );
+
+      // If user is removing themselves, close the chat
+      if (usr._id === user._id) {
+        setselectedChat(null);
+        props?.fn?.(false); // Close modal
+      } else {
+        setselectedChat(data);
+      }
+      setfetchagain((prev) => !prev);
+
+      toast.success(
+        usr._id === user._id
+          ? "Left group successfully"
+          : "User removed successfully",
+        {
+          position: "bottom-right",
+          autoClose: 3000,
+          theme: "dark",
+        }
+      );
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to remove user";
+      toast.error(errorMessage, {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
+    }
+  };
+
+  const handleAdd = async (usr) => {
+    if (!user?.token) {
+      toast.error("Authentication token not found", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
+      return;
+    }
+
+    if (!selectedChat?.users || !usr?._id) {
+      toast.error("Invalid chat or user data", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
+      return;
+    }
+
+    const { token } = user;
+
+    // Check if user is already in the group
+    if (selectedChat.users.find((u) => u._id === usr._id)) {
+      toast.info("User already added", {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
+      return;
+    }
+
+    // Check if current user is admin
+    if (selectedChat.groupAdmin?._id !== user._id) {
+      toast.warn("You are not Admin", {
+        position: "bottom-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+      });
+      return;
+    }
+
+    try {
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      const { data } = await axios.put(
+        "http://localhost:5000/api/chat/groupadd",
+        {
+          chatId: selectedChat._id,
+          userId: usr._id,
         },
         config
       );
 
       setselectedChat(data);
-      setfetchagain((prev)=>!prev)
+      setfetchagain((prev) => !prev);
+      toast.success("User added successfully", {
+        position: "bottom-right",
+        autoClose: 3000,
+        theme: "dark",
+      });
     } catch (error) {
-      toast.error(error.message, {
+      const errorMessage =
+        error.response?.data?.message || error.message || "Failed to add user";
+      toast.error(errorMessage, {
         position: "bottom-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -236,9 +362,15 @@ const ChatInfo = (props) => {
   };
 
   useEffect(() => {
-    // it only runs code inside it in the first reload, may be its only development defect
     fetchChats();
   }, [fetchagain]);
+
+  // Clean up search when component unmounts or selectedChat changes
+  useEffect(() => {
+    setsearch("");
+    setsearchResults([]);
+    setgroupChatName("");
+  }, [selectedChat]);
 
   return (
     <div
@@ -248,12 +380,12 @@ const ChatInfo = (props) => {
       aria-hidden={!props?.isOpen}
     >
       <div className="relative p-4 w-full max-w-md max-h-full">
-        <div className=" rounded-lg shadow dark:bg-gray-700">
-          <div className="flex p-2 md:p-5  ">
-            <div className=" text-gray-400 h-full flex flex-col items-start justify-start">
+        <div className="rounded-lg shadow dark:bg-gray-700">
+          <div className="flex p-2 md:p-5">
+            <div className="text-gray-400 h-full flex flex-col items-start justify-start">
               {selectedChat ? (
                 <div className="flex flex-col items-start justify-start">
-                  <span className="flex bg-gray-800 gap-2 font-semibold max-w-[90%] overflow-hidden justify-center items-center pr-4 text-lg py-[8px] px-2  rounded-full">
+                  <span className="flex bg-gray-800 gap-2 font-semibold max-w-[90%] overflow-hidden justify-center items-center pr-4 text-lg py-[8px] px-2 rounded-full">
                     <img
                       className="w-10 h-10 rounded-full"
                       src={
@@ -261,6 +393,14 @@ const ChatInfo = (props) => {
                           ? getSenderPic(user, selectedChat.users)
                           : "/group.svg"
                       }
+                      alt={
+                        !selectedChat.isGroupChat
+                          ? getSender(user, selectedChat.users)
+                          : selectedChat.chatName
+                      }
+                      onError={(e) => {
+                        e.target.src = "/default-avatar.png"; // Fallback image
+                      }}
                     />
 
                     {!selectedChat.isGroupChat
@@ -272,59 +412,66 @@ const ChatInfo = (props) => {
 
                   <div
                     className={`${
-                      selectedChat.users.length > 2
+                      selectedChat.users?.length > 2
                         ? "border-t border-gray-500 flex pt-4"
                         : "hidden"
-                    }  gap-2 flex-wrap max-h-[100px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-gray-500 [&::-webkit-scrollbar-thumb]:bg-gray-800 overflow-auto`}
+                    } gap-2 flex-wrap max-h-[100px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-gray-500 [&::-webkit-scrollbar-thumb]:bg-gray-800 overflow-auto`}
                   >
-                    {selectedChat.users.map((user) => (
+                    {selectedChat.users?.map((chatUser) => (
                       <span
-                        key={user._id}
-                        onClick={() => handleRemove(user)}
-                        className=" flex flex-wrap gap-1 font-semibold justify-center overflow-hidden items-center  pr-1 cursor-pointer text-sm  bg-blue-800 border hover:bg-red-500 transition border-white/[0.2] text-gray-100 rounded-lg"
+                        key={chatUser._id}
+                        onClick={() => handleRemove(chatUser)}
+                        className="flex flex-wrap gap-1 font-semibold justify-center overflow-hidden items-center pr-1 cursor-pointer text-sm bg-blue-800 border hover:bg-red-500 transition border-white/[0.2] text-gray-100 rounded-lg"
                       >
                         <img
                           width={30}
                           height={30}
                           className="rounded-md"
-                          src={user.pic}
+                          src={chatUser.pic}
+                          alt={chatUser.name}
+                          onError={(e) => {
+                            e.target.src = "/default-avatar.png"; // Fallback image
+                          }}
                         />
-
-                        {user.name}
+                        {chatUser.name}
                       </span>
                     ))}
                   </div>
+
                   <form
-                    className={` ${
+                    className={`${
                       selectedChat.isGroupChat &&
-                      selectedChat?.groupAdmin._id == user._id
+                      selectedChat?.groupAdmin?._id === user?._id
                         ? "flex"
                         : "hidden"
-                    }  gap-2 mt-4 w-full`}
+                    } gap-2 mt-4 w-full`}
+                    onSubmit={handleRename}
                   >
                     <input
                       className="rounded-md min-w-[60%] p-1 bg-gray-800 border border-white/[0.3]"
                       type="text"
                       name="rename"
                       id="rename"
-                      onChange={(e) => {
-                        setgroupChatName(e.target.value);
-                      }}
-                    />{" "}
+                      value={groupChatName}
+                      onChange={(e) => setgroupChatName(e.target.value)}
+                      placeholder="Enter new group name"
+                    />
                     <button
-                      onClick={() => handleRename()}
-                      className="py-2 min-w-24 px-3 bg-gray-800 border border-white/[0.3]"
+                      type="submit"
+                      disabled={Renameloading || !groupChatName.trim()}
+                      className="py-2 min-w-24 px-3 bg-gray-800 border border-white/[0.3] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {Renameloading ? "..." : "Rename"}
                     </button>
                   </form>
-                  <form
-                    className={` ${
+
+                  <div
+                    className={`${
                       selectedChat.isGroupChat &&
-                      selectedChat?.groupAdmin._id == user._id
+                      selectedChat?.groupAdmin?._id === user?._id
                         ? "flex"
                         : "hidden"
-                    }  gap-2 my-4  w-full flex-col items-start`}
+                    } gap-2 my-4 w-full flex-col items-start`}
                   >
                     <label htmlFor="add">Search User</label>
                     <input
@@ -332,15 +479,13 @@ const ChatInfo = (props) => {
                       type="text"
                       name="add"
                       id="add"
-                      onChange={(e) => {
-                        handleSearch(e.target.value);
-                      }}
+                      value={search}
+                      onChange={(e) => handleSearch(e.target.value)}
                       placeholder="Just Type and search"
-                    />{" "}
-                  </form>
+                    />
+                  </div>
 
                   <div className={`${search ? "flex" : "hidden"} gap-2 py-2`}>
-                    {/* Render searched users */}
                     {loading ? (
                       <div className="flex flex-row gap-2 py-5 px-4">
                         <div className="w-4 h-4 rounded-full bg-blue-600 animate-bounce"></div>
@@ -348,20 +493,23 @@ const ChatInfo = (props) => {
                         <div className="w-4 h-4 rounded-full bg-blue-800 animate-bounce [animation-delay:-.5s]"></div>
                       </div>
                     ) : (
-                      searchResults?.slice(0, 4).map((user) => (
+                      searchResults?.slice(0, 4).map((searchUser) => (
                         <span
-                          key={user._id}
-                          onClick={() => handleAdd(user)}
-                          className=" flex flex-wrap gap-1 font-bold justify-center overflow-hidden items-center  pr-1 cursor-pointer text-sm  bg-yellow-500 border hover:bg-green-500 transition border-white/[0.5] text-gray-100 rounded-lg"
+                          key={searchUser._id}
+                          onClick={() => handleAdd(searchUser)}
+                          className="flex flex-wrap gap-1 font-bold justify-center overflow-hidden items-center pr-1 cursor-pointer text-sm bg-yellow-500 border hover:bg-green-500 transition border-white/[0.5] text-gray-100 rounded-lg"
                         >
                           <img
                             width={30}
                             height={30}
                             className="rounded-md"
-                            src={user.pic}
+                            src={searchUser.pic}
+                            alt={searchUser.name}
+                            onError={(e) => {
+                              e.target.src = "/default-avatar.png"; // Fallback image
+                            }}
                           />
-
-                          {user.name}
+                          {searchUser.name}
                         </span>
                       ))
                     )}
@@ -370,33 +518,32 @@ const ChatInfo = (props) => {
                   <div className="flex gap-2">
                     <button
                       className="bg-gray-500 text-white rounded p-2 py-0.5 mt-4 border border-white/[0.1]"
-                      onClick={() => props?.fn(false)}
+                      onClick={() => props?.fn?.(false)}
                     >
                       Close
                     </button>
                     <button
-                      className={` ${
+                      className={`${
                         selectedChat?.isGroupChat ? "flex" : "hidden"
                       } bg-red-500 text-white rounded p-2 py-0.5 mt-4 border border-white/[0.1]`}
                       onClick={() => handleRemove(user)}
                     >
                       Leave Group
-                    </button> 
+                    </button>
                   </div>
                 </div>
               ) : (
-                <div className=" flex flex-col justify-center items-center gap-0">
+                <div className="flex flex-col justify-center items-center gap-0">
                   <h3 className="text-2xl border border-white/[0.1] pb-0.5 bg-slate-900 px-3 rounded-full text-[#557] font-semibold">
-                    Please Pick Conversation    
-                  </h3>   
+                    Please Pick Conversation
+                  </h3>
                   <div className="flex gap-2 items-start justify-start w-full">
                     <button
                       className="bg-gray-500 text-white rounded p-2 py-0.5 mt-4 border border-white/[0.1]"
-                      onClick={() => props?.fn(false)}
+                      onClick={() => props?.fn?.(false)}
                     >
                       Close
                     </button>
-                    
                   </div>
                 </div>
               )}
