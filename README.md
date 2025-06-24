@@ -38,9 +38,9 @@ Quickpost is a modern, real-time chat application built using the powerful MERN 
 ## 📸 Screenshots
 
 
-| Register Page | Login Page | Chat UI |
-|---------------|------------|---------|
-|![register](https://github.com/user-attachments/assets/c754abb8-c1da-4ecc-b77c-c3d8819a6b16)|![login](https://github.com/user-attachments/assets/ce382b2d-02b0-4b03-88ea-b437a57be932)|![QuickPost2](https://github.com/user-attachments/assets/30e0a936-b53a-4e06-8c55-b82b5795eb59)|
+| Login Page | Chat UI |
+|------------|---------|
+|![login](https://github.com/user-attachments/assets/ce382b2d-02b0-4b03-88ea-b437a57be932)|![QuickPost2](https://github.com/user-attachments/assets/30e0a936-b53a-4e06-8c55-b82b5795eb59)|
 
 ---
 
