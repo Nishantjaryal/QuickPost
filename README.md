@@ -64,7 +64,8 @@ npm install
 cd frontend
 npm install
 
-# fill the ENVIRONMENTAL VARIABLES
+```
+### fill the ENVIRONMENTAL VARIABLES
 ```
 PORT=5000
 MONGO_URI=YOUR_MONGO_DB_URL
