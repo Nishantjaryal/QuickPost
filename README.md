@@ -63,3 +63,11 @@ npm install
 # Install client dependencies
 cd frontend
 npm install
+
+# fill the ENVIRONMENTAL VARIABLES
+```
+PORT=5000
+MONGO_URI=YOUR_MONGO_DB_URL
+JWT_SECRET=_YOUR_JWT_SECRET_KEY
+NODE_ENV=production
+```
